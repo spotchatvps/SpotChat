@@ -1,0 +1,67 @@
+version: "3"
+
+volumes:
+  cache:
+    driver: local
+  db_data:
+    driver: local
+  files:
+    driver: local
+
+services:
+  frontend:
+    restart: always
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+      args:
+        - NODE_ENV=${NODE_ENV:-production}
+        - REACT_APP_BACKEND_URL=${BACKEND_URL}/
+    ports:
+      - ${FRONTEND_PORT}:3333
+
+  redis:
+    image: redis:alpine
+    restart: always
+    command: redis-server --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - cache:/data
+
+  db:
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - ${PG_PORT}:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    restart: always
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+      args:
+        - DB_HOST=${DB_HOST}
+        - FRONTEND_URL=${FRONTEND_URL}
+        - BACKEND_URL=${BACKEND_URL}
+        - PROXY_PORT=${PROXY_PORT}
+        - PORT=${PORT}
+        - CONNECTIONS=${CONNECTIONS}
+        - QUEUES=${QUEUES}
+        - USERS=${USERS}
+    env_file:
+      - .env
+    ports:
+      - ${PROXY_PORT}:${PROXY_PORT}
+    volumes:
+      - files:/app/public
+    depends_on:
+      - redis
+      - db
+    links:
+      - redis
+      - db
