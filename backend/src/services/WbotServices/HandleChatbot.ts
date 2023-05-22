@@ -551,6 +551,8 @@ async function doesNotListTheFirstOption(
         option: selectedButtonId
       }
     });
+  opcoesFinais += "0 - Voltar\n";
+  opcoesFinais += "00 - Menu inicial\n";
   } else {
     option = await QueueOption.findByPk(+selectedButtonId);
   }
